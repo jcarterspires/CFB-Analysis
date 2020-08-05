@@ -1,0 +1,42 @@
+library(tidyverse)
+library(cfbscrapR)
+
+#pulling pbp data for all games, regular and bowl, in a given year
+#most of this is Parker's code from the cfbscrapR tutorial; I've just made minor adjustments for things like EPA success and the pick six fix
+
+pbp_2019 <- cfb_pbp_data(year=2019, 
+                         season_type = "both",
+                         week=NULL,
+                         epa_wpa = TRUE)
+
+game_data_19 <- cfb_game_info(2019)
+  
+
+#Adding game-level data
+
+pbp_2019 <- left_join(pbp_2019, game_data_19,
+                      by = c("game_id" = "id"))
+
+#The garbage time filter is based on Bill Connelly's definition for SP+ and is Parker's; similarly for success
+#The filter for no conference gets rid of games against FCS teams and is Parker's
+#I've added a defense_conference column to simplify conference-level defensive analysis
+#I've also added a success definition based on EPA
+#Lastly, the data records some pick sixes as "Interception Return Touchdowns" and doesn't properly have pass = 1 for those plays; I've fixed that
+
+pbp_2019 <- pbp_2019 %>% 
+  filter(!is.na(home_conference) & !is.na(away_conference)) %>%
+  mutate(defense_conference = ifelse(defense_play==home_team, home_conference, away_conference),
+         success = ifelse(down == 1 & yards_gained > .5*distance, 1,
+                   ifelse(down == 2 & yards_gained > .7*distance, 1,
+                   ifelse((down == 3 | down == 4) & yards_gained >=distance, 1, 0))),
+         abs_diff = abs(score_diff),
+         garbage = ifelse(period == 1 & abs_diff > 43, 1,
+                   ifelse(period == 2 & abs_diff > 37, 1,
+                   ifelse(period == 3 & abs_diff > 27, 1,
+                   ifelse(period == 4 & abs_diff > 22, 1, 0)))),
+         epa_success = ifelse(EPA > 0, 1, 0),
+         pass = ifelse(play_type == "Interception Return Touchdown", 1, pass))
+
+#Let's toss in a logos set here as well; this can then be appended to a data frame for use in viz
+
+cfblogos <- read.csv("https://raw.githubusercontent.com/jcspires/CFB-Analysis/master/cfblogos.csv")
