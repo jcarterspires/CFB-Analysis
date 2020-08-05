@@ -1,10 +1,11 @@
-library(ggplot2)
-
 # With the SEC as an example, this plots QB/WR recruiting for a specified time period vs offensive pass EPA for a given year
 # And then similarly, DB recruiting vs defensive pass EPA
 # You can play around with how much of the previous five years of recruiting you want to include
 # Each plot includes a linear regression line to show the general trend, and an lm object you can check the summary for to see the actual fit
 # This includes the pbp_[year] and cfb_logos dfs that were created in the "PBP" script; creating the defense_conference column is helpful for this
+# cfbscrapR and tidyverse are assumed to be loaded already
+
+library(ggplot2)
 
 sec_pass_epa <- pbp_2019 %>%
   filter(offense_conference == "SEC" & pass == 1) %>%
