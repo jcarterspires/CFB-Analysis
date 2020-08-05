@@ -1,0 +1,80 @@
+library(ggplot2)
+
+# With the SEC as an example, this plots QB/WR recruiting for a specified time period vs offensive pass EPA for a given year
+# And then similarly, DB recruiting vs defensive pass EPA
+# You can play around with how much of the previous five years of recruiting you want to include
+# Each plot includes a linear regression line to show the general trend, and an lm object you can check the summary for to see the actual fit
+# This includes the pbp_[year] and cfb_logos dfs that were created in the "PBP" script; creating the defense_conference column is helpful for this
+
+sec_pass_epa <- pbp_2019 %>%
+  filter(offense_conference == "SEC" & pass == 1) %>%
+  group_by(offense_play) %>%
+  summarize(mean_pass_epa = mean(EPA))
+
+sec_qbwr_croot <- cfb_recruiting_position(2015, 2019) %>%
+  filter(conference=="SEC" & (positionGroup=="Quarterback" | positionGroup=="Receiver")) %>%
+  group_by(team) %>%
+  summarize(totalrating_qbwr = sum(totalRating),
+            total_commits = sum(commits)) %>%
+  mutate(avg_rate = totalrating_qbwr/total_commits)
+
+sec_pepa_qbwr <- sec_pass_epa %>%
+  left_join(sec_qbwr_croot, by=c("offense_play"="team")) %>%
+  left_join(cfblogos, by=c("offense_play"="school"))
+
+sec_off_lm <- lm(mean_pass_epa ~ avg_rate, data=sec_pepa_qbwr)
+summary(sec_off_lm)
+
+sec_pepa_qbwr %>% 
+  ggplot(aes(x=avg_rate, y=mean_pass_epa)) +
+  geom_image(image=sec_pepa_qbwr$logo, asp=16/9) +
+  labs(x="Average QB/WR Recruit Rating 2015-2019", 
+       y="Mean Pass EPA 2019",
+       title="SEC QB/WR Recruiting vs Pass EPA",
+       subtitle="Data from @CFB_Data via @cfbscrapR | Graph by @jcarterspires") +
+  geom_vline(xintercept = mean(sec_pepa_qbwr$avg_rate), linetype = "dashed", color = "red", alpha = 0.5) +
+  geom_hline(yintercept = mean(sec_pepa_qbwr$mean_pass_epa), linetype = "dashed", color = "red", alpha = 0.5) +
+  geom_smooth(method='lm') +
+  theme_minimal() +
+  theme(axis.title = element_text(size = 12),
+        axis.text = element_text(size = 10),
+        plot.title = element_text(size = 20),
+        plot.subtitle = element_text(size = 14),
+        plot.caption = element_text(size = 12),
+        panel.grid.minor = element_blank()) 
+
+
+sec_defpass_epa <- pbp_2019 %>%
+  filter(defense_conference == "SEC" & pass == 1) %>%
+  group_by(defense_play) %>%
+  summarize(mean_pass_epa = mean(EPA))
+
+sec_db_croot <- cfb_recruiting_position(2015, 2019) %>%
+  filter(conference=="SEC" & positionGroup=="Defensive Back") %>%
+  group_by(team) %>%
+  summarize(avg_rate = mean(averageRating))
+
+sec_pepa_db <- sec_defpass_epa %>%
+  left_join(sec_db_croot, by=c("defense_play"="team")) %>%
+  left_join(cfblogos, by=c("defense_play"="school"))
+
+sec_def_lm <- lm(mean_pass_epa ~ avg_rate, data=sec_pepa_db)
+summary(sec_def_lm)
+
+sec_pepa_db %>% 
+  ggplot(aes(x=avg_rate, y=mean_pass_epa)) +
+  geom_image(image=sec_pepa_db$logo, asp=16/9) +
+  labs(x="Average DB Recruit Rating 2015-2019", 
+       y="Mean Defensive Pass EPA 2019",
+       title="SEC DB Recruiting vs Pass EPA",
+       subtitle="Data from @CFB_Data via @cfbscrapR | Graph by @jcarterspires") +
+  geom_vline(xintercept = mean(sec_pepa_db$avg_rate), linetype = "dashed", color = "red", alpha = 0.5) +
+  geom_hline(yintercept = mean(sec_pepa_db$mean_pass_epa), linetype = "dashed", color = "red", alpha = 0.5) +
+  geom_smooth(method='lm') +
+  theme_minimal() +
+  theme(axis.title = element_text(size = 12),
+        axis.text = element_text(size = 10),
+        plot.title = element_text(size = 20),
+        plot.subtitle = element_text(size = 14),
+        plot.caption = element_text(size = 12),
+        panel.grid.minor = element_blank()) 
