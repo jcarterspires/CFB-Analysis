@@ -1,7 +1,9 @@
 # With Rice's 2019 QBs as an example, this script creates a bar graph to compare total EPA or EPA/play from different QBs
 # Maybe there's a more elegant way, but my strategy is to check the play text and pull out plays with the QBs' names in them, take just runs and passes, then remove all other plays
 # The rush_or_pass column allows you to separate the contributions as such, and that way you can plot both at once
-# The pbp_[year] object from the PBP script is used here
+# The pbp_[year] object from the PBP script is used here; and cfbscrapR and tidyverse are pre-loaded
+
+library(ggplot2)
 
 rice_offense <- pbp_2019 %>%
   filter(offense_play == "Rice")
