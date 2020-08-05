@@ -1,0 +1,68 @@
+# With Rice's 2019 QBs as an example, this script creates a bar graph to compare total EPA or EPA/play from different QBs
+# Maybe there's a more elegant way, but my strategy is to check the play text and pull out plays with the QBs' names in them, take just runs and passes, then remove all other plays
+# The rush_or_pass column allows you to separate the contributions as such, and that way you can plot both at once
+# The pbp_[year] object from the PBP script is used here
+
+rice_offense <- pbp_2019 %>%
+  filter(offense_play == "Rice")
+
+rice_qbs <- rice_offense %>%
+  mutate(QB = ifelse(str_detect(play_text, "Wiley Green"), "Green",
+                     ifelse(str_detect(play_text, "JoVoni Johnson"), "Johnson",
+                            ifelse(str_detect(play_text, "Tom Stewart"), "Stewart", "None")))) %>%
+  mutate(rush_or_pass = ifelse(rush == 1, "Rush",
+                               ifelse(pass == 1, "Pass", "Other"))) %>%
+  filter(QB != "None" & rush_or_pass != "Other")
+
+Rice_QB_EPA <- rice_qbs %>%
+  group_by(QB, rush_or_pass) %>%
+  summarize(total_epa = sum(EPA), epa_pp = mean(EPA))
+
+Rice_QB_EPA %>%
+  ggplot(aes(x=QB, y=total_epa, fill=rush_or_pass)) +
+  geom_col(position = "dodge2") +
+  scale_fill_manual(values = c("#00205B", "#C1C6C8")) +
+  labs(x="QB", 
+       y="Total EPA",
+       fill="Play Type",
+       title="Rice QB Total EPA, Rush and pass",
+       subtitle="Data from @CFB_Data via @cfbscrapR | Graph by @jcarterspires")
+       
+# This section pulls the plays for Rice's 2020 grad transfer Mike Collins from his playing time at TCU in 2018
+# It's left here as an example for how to pull in QBs from different teams/years into a chart like the one above
+# the values in the rush_or_pass column for the Collins plays are listed as "Rush1" and "Pass1" so I could assign TCU's colors to Collins instead of Rice's
+
+tcu_18_pbp <- cfb_pbp_data(year=2018, 
+                         season_type = "both",
+                         team="TCU",
+                         week=NULL,
+                         epa_wpa = TRUE)
+
+game_data_18 <- cfb_game_info(2018)
+
+collins_18 <- tcu_18_pbp %>% 
+  left_join(game_data_18, by = c("game_id" = "id")) %>%
+  mutate(QB = ifelse(str_detect(play_text, "Michael Collins"), "Collins", "Other/None")) %>%
+  mutate(rush_or_pass = ifelse(rush == 1, "Rush1",
+                             ifelse(pass == 1, "Pass1", "Other"))) %>%
+  filter(QB != "Other/None" & rush_or_pass != "Other")
+
+collins_EPA <- collins_18 %>%
+  group_by(QB, rush_or_pass) %>%
+  summarize(total_epa = sum(EPA), epa_pp = mean(EPA))
+
+combined_EPA <- rbind(Rice_QB_EPA, collins_EPA)
+
+combined_EPA %>%
+  ggplot(aes(x=QB, y=total_epa, fill=rush_or_pass)) +
+  geom_col(position = "dodge2") +
+  scale_fill_manual(values = c("#00205B", "#C1C6C8", "#4d1979", "#000000"), 
+                    limits = c("Pass", "Rush", "Pass1", "Rush1"),
+                    labels = c("Pass", "Rush", "Pass", "Rush")) +
+  labs(x="QB", 
+       y="Total EPA",
+       fill="Play Type",
+       title="Rice QBs 2019/Collins 2018 Total EPA, Rush and Pass",
+       subtitle="Data from @CFB_Data via @cfbscrapR | Graph by @jcarterspires")
+
+
